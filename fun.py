@@ -13,14 +13,15 @@ import os
 from langchain_community.vectorstores import Chroma
 
 # LLM for question answering (still using OpenAI for this part)
-from langchain_openai import ChatOpenAI
+# from langchain_openai import ChatOpenAI
+from openai import OpenAI
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
 load_dotenv()
 # Check for missing API key
-if not os.getenv("OPENAI_API_KEY"):
-    print("Error: OPENAI_API_KEY environment variable not set. Please add it to your .env file.")
+if not os.getenv("OPENROUTER_API_KEY"):
+    print("Error: OPENROUTER_API_KEY environment variable not set. Please add it to your .env file.")
     exit(1)
 
 
@@ -71,7 +72,7 @@ def create_vector_store(documents, persist_directory="data/chroma_db"):
     
     return vector_store
 
-def get_or_create_vector_store(documents, persist_directory="data/chroma_db"):
+def get_or_create_vector_store(documents, persist_directory="data"):
     # If the directory exists and is not empty, load the vector store
     if os.path.exists(persist_directory) and os.listdir(persist_directory):
         print("Loading existing vector store...")
@@ -87,15 +88,14 @@ def get_or_create_vector_store(documents, persist_directory="data/chroma_db"):
 
 # Create QA chain
 def create_qa_chain(vector_store):
-    # Initialize LLM for answering (using OpenAI but you could use a local model too)
-    llm = ChatOpenAI(
-        model_name="gpt-3.5-turbo",
-        temperature=0.5,
-        openai_api_key=os.getenv("OPENAI_API_KEY")
+    # Initialize OpenRouter client
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=os.getenv("OPENROUTER_API_KEY"),
     )
     
     # Create prompt template
-    prompt_template = """Use the following pieces of context to answer the question at the end in the same language as the question.
+    prompt_template = """Use the following pieces of context to answer the question at the end in the same language as the question. Mantain a semi professional tone of chat as we are conversing with students.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
 
 Context: {context}
@@ -108,16 +108,62 @@ Answer:"""
         input_variables=["context", "question"]
     )
     
-    # Create retrieval chain
-    qa_chain = RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=vector_store.as_retriever(search_kwargs={"k": 3}),
-        chain_type_kwargs={"prompt": PROMPT},
-        return_source_documents=True
-    )
+
+    # Create a custom function to handle the QA process
+    def query_openrouter(query, context):
+        # Format the prompt with context and question
+        formatted_prompt = PROMPT.format(context=context, question=query)
+        
+        # Make request to OpenRouter API
+        try:
+            completion = client.chat.completions.create(
+                extra_headers={
+                    "HTTP-Referer": "http://localhost",  # Optional
+                    "X-Title": "RAG Chatbot",  # Optional
+                },
+                model="deepseek/deepseek-chat-v3.1:free",  # Using DeepSeek V3.1
+                messages=[
+                    {
+                        "role": "user",
+                        "content": formatted_prompt
+                    }
+                ],
+                temperature=0.5
+            )
+            
+            return completion.choices[0].message.content
+            
+        except Exception as e:
+            return f"An error occurred: {str(e)}"
+    
+    # Create a simple chain-like function
+    def qa_chain(inputs):
+        query = inputs["query"]
+        
+        # Retrieve relevant documents
+        retriever = vector_store.as_retriever(search_kwargs={"k": 3})
+        docs = retriever.get_relevant_documents(query)
+        context = "\n\n".join([doc.page_content for doc in docs])
+        
+        # Get answer from OpenRouter
+        result = query_openrouter(query, context)
+        
+        return {
+            "result": result,
+            "source_documents": docs
+        }
     
     return qa_chain
+    # # Create retrieval chain
+    # qa_chain = RetrievalQA.from_chain_type(
+    #     llm=llm,
+    #     chain_type="stuff",
+    #     retriever=vector_store.as_retriever(search_kwargs={"k": 3}),
+    #     chain_type_kwargs={"prompt": PROMPT},
+    #     return_source_documents=True
+    # )
+    
+    # return qa_chain
 
 
 # Main function
@@ -128,14 +174,14 @@ def main():
     print(f"Loaded {len(documents)} documents from the folder.")
 
     # Create vector store
-    vector_store = get_or_create_vector_store(documents)
+    vector_store = create_vector_store(documents)
     
     # Create QA chain
     qa_chain = create_qa_chain(vector_store)
     
     # Test with queries in different languages
     queries = [
-        "When do all students have mid semester examination?",  # English
+        "Why did IIT kharagpur adminstration decide to put mid sem exam on 20th and 21th of september?",  # English
         "सभी छात्रों की मध्य सेमेस्टर परीक्षा कब होगी?",  # hindi
         "সকল শিক্ষার্থীর মিড সেমিস্টার পরীক্ষা কখন হয়?",     # bengali
         "అందరు విద్యార్థులకు మిడ్ సెమిస్టర్ పరీక్షలు ఎప్పుడు ఉంటాయి?",     # telugu
@@ -145,7 +191,7 @@ def main():
     for query in queries:
         print(f"\nQuestion: {query}")
         try:
-            response = qa_chain.invoke({"query": query})
+            response = qa_chain({"query": query})
             print(f"Answer: {response['result']}")
             
             # Show sources
