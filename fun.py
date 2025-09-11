@@ -23,6 +23,36 @@ if not os.getenv("OPENROUTER_API_KEY"):
     print("Error: OPENROUTER_API_KEY environment variable not set. Please add it to your .env file.")
     exit(1)
 
+def vector_store_exists(persist_directory="data/chroma_db"): # 
+    """
+    Check if a valid Chroma vector store exists at the given directory.
+    
+    Args:
+        persist_directory (str): Path to the vector store directory
+        
+    Returns:
+        bool: True if a valid vector store exists, False otherwise
+    """
+    if not os.path.exists(persist_directory):
+        return False
+    
+    # Check if the directory is empty
+    if not os.listdir(persist_directory):
+        return False
+    
+    # Check if it's a valid ChromaDB
+    try:
+        embeddings = get_multilingual_embeddings()
+        vector_store = Chroma(
+            persist_directory=persist_directory,
+            embedding_function=embeddings
+        )
+        # Try a simple operation to validate the database
+        _ = vector_store._collection.count()
+        return True
+    except Exception as e:
+        print(f"Vector store validation failed: {e}")
+        return False
 
 def load_documents(folder_path: str) -> List[Document]:
     documents = []
@@ -69,6 +99,7 @@ def create_vector_store(documents, persist_directory="data/chroma_db"):
     chunks = text_splitter.split_documents(documents)
     
     print(f"Split the documents into {len(chunks)} chunks.")
+    
     # Create embeddings
     embeddings = get_multilingual_embeddings()
     
@@ -81,18 +112,23 @@ def create_vector_store(documents, persist_directory="data/chroma_db"):
     
     return vector_store
 
-def get_or_create_vector_store(documents, persist_directory="data"):
-    # If the directory exists and is not empty, load the vector store
-    if os.path.exists(persist_directory) and os.listdir(persist_directory):
+def get_or_create_vector_store(documents, persist_directory="data/chroma_db"):
+    persist_dir = Path(persist_directory)
+    persist_dir.mkdir(parents=True, exist_ok=True)
+
+    if vector_store_exists(str(persist_dir)):
         print("Loading existing vector store...")
         embeddings = get_multilingual_embeddings()
         vector_store = Chroma(
-            persist_directory=persist_directory,
+            persist_directory=str(persist_dir),
             embedding_function=embeddings
         )
+        print("Vector store loaded successfully.")
     else:
         print("Creating new vector store...")
-        vector_store = create_vector_store(documents, persist_directory)
+        vector_store = create_vector_store(documents, persist_directory=str(persist_dir))
+        print("Vector store created successfully.")
+
     return vector_store
 
 # Intent and Entity Recognition
@@ -505,17 +541,43 @@ def interactive_chat(vector_store):
 
 
 # Main function
+from pathlib import Path
+
 def main():
-    # Load your document
-    folderpath = 'data'
-    documents = load_documents(folderpath)
+    # Resolve script directory (where fun.py lives)
+    script_dir = Path(__file__).resolve().parent
+
+    # Always point to the data folder inside the script directory
+    folderpath = script_dir / "data"
+
+    # Debug prints so you can see what's being checked
+    print("Script file:", Path(__file__).resolve())
+    print("Current working dir:", Path.cwd())
+    print("Looking for data folder at:", folderpath)
+
+    # Check if folder exists
+    if not folderpath.exists():
+        print(f"Error: The folder '{folderpath}' does not exist.")
+        print("Please create the 'data' folder inside the script directory or point folderpath elsewhere.")
+        return
+
+    # Check if folder is empty
+    if not any(folderpath.iterdir()):
+        print(f"Error: The folder '{folderpath}' is empty.")
+        print("Please add PDF/DOCX files to the data folder.")
+        return
+
+    # Load documents (load_documents accepts a str path)
+    documents = load_documents(str(folderpath))
     print(f"Loaded {len(documents)} documents from the folder.")
 
-    # Create vector store
-    vector_store = create_vector_store(documents)
-    
+    # Use a chroma_db folder inside the data folder
+    chroma_dir = script_dir / "data" / "chroma_db"
+    vector_store = get_or_create_vector_store(documents, persist_directory=str(chroma_dir))
+
     # Start interactive chat
     interactive_chat(vector_store)
+
 
 if __name__ == "__main__":
     main()
