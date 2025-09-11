@@ -131,6 +131,20 @@ def get_or_create_vector_store(documents, persist_directory="data/chroma_db"):
 
     return vector_store
 
+def ask_ai(vector_store, question: str) -> str:
+    """
+    Handles a single chatbot query and returns the answer.
+    Replace this with your LangChain chain/QA setup if needed.
+    """
+    # Example: similarity search
+    results = vector_store.similarity_search(question, k=3)
+    answer = " ".join([doc.page_content for doc in results])
+
+    # TODO: If you already had a LangChain QA/ConversationalRetrievalChain setup,
+    # replace above with chain.run({"question": question}) or similar.
+    
+    return answer
+
 # Intent and Entity Recognition
 class IntentEntityRecognizer:
     def __init__(self):
@@ -578,6 +592,40 @@ def main():
     # Start interactive chat
     interactive_chat(vector_store)
 
+def ask_ai(vector_store, question: str):
+    """
+    Simple wrapper to run your QA chain and return JSON-friendly output.
+    Arguments:
+      - vector_store: a Chroma vector store instance (from get_or_create_vector_store)
+      - question: the user's question string
+    Returns:
+      A dict with answer, intent, confidence, entities and source list.
+    """
+    # Create a short conversation memory and the qa_chain
+    memory = ConversationMemory(max_history=5)
+    qa_chain = create_qa_chain(vector_store, memory)
+
+    # Run the chain
+    response = qa_chain({"query": question})
+
+    # Format sources cleanly
+    sources = []
+    for doc in response.get("source_documents", []):
+        src = doc.metadata.get("source") if hasattr(doc, "metadata") else None
+        page = doc.metadata.get("page") if hasattr(doc, "metadata") else None
+        sources.append({"source": src, "page": page})
+
+    # Prepare output dict
+    intent_info = response.get("intent_info", {})
+    output = {
+        "answer": response.get("result"),
+        "intent": intent_info.get("intent") if intent_info else None,
+        "confidence": intent_info.get("confidence") if intent_info else None,
+        "entities": intent_info.get("entities") if intent_info else {},
+        "sources": sources,
+    }
+
+    return output
 
 if __name__ == "__main__":
     main()
