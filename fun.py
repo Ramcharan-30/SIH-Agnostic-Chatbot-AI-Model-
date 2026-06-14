@@ -93,7 +93,7 @@ def create_vector_store(documents, persist_directory="data/chroma_db"):
     # Split documents into chunks
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
-        chunk_overlap=200,
+        chunk_overlap=500,
         length_function=len,
     )
     chunks = text_splitter.split_documents(documents)
