@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 245 100% 98%;
+    --foreground: 220 15% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 20%;
+
+    --primary: 215 85% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 215 85% 70%;
+
+    --secondary: 45 95% 65%;
+    --secondary-foreground: 220 15% 20%;
+    --secondary-glow: 45 95% 75%;
+
+    --muted: 220 15% 96%;
+    --muted-foreground: 220 15% 50%;
+
+    --accent: 45 95% 65%;
+    --accent-foreground: 220 15% 20%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 90%;
+    --input: 220 15% 90%;
+    --ring: 215 85% 55%;
+
+    /* Campus Buddy specific colors */
+    --campus-blue: 215 85% 55%;
+    --campus-blue-light: 215 85% 70%;
+    --campus-yellow: 45 95% 65%;
+    --campus-yellow-light: 45 95% 75%;
+    --campus-gradient: linear-gradient(135deg, hsl(var(--campus-blue)), hsl(var(--campus-blue-light)));
+    --campus-gradient-yellow: linear-gradient(135deg, hsl(var(--campus-yellow)), hsl(var(--campus-yellow-light)));
+    
+    /* Shadows and effects */
+    --shadow-soft: 0 4px 20px -4px hsl(var(--campus-blue) / 0.15);
+    --shadow-glow: 0 0 30px hsl(var(--campus-blue) / 0.2);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 220 15% 8%;
+    --foreground: 220 15% 95%;
+
+    --card: 220 15% 10%;
+    --card-foreground: 220 15% 95%;
+
+    --popover: 220 15% 10%;
+    --popover-foreground: 220 15% 95%;
+
+    --primary: 215 85% 65%;
+    --primary-foreground: 220 15% 8%;
+    --primary-glow: 215 85% 75%;
+
+    --secondary: 45 85% 55%;
+    --secondary-foreground: 220 15% 8%;
+    --secondary-glow: 45 85% 65%;
+
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 15% 60%;
+
+    --accent: 45 85% 55%;
+    --accent-foreground: 220 15% 8%;
+
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 220 15% 95%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 215 85% 65%;
+
+    /* Dark mode Campus Buddy colors */
+    --campus-blue: 215 85% 65%;
+    --campus-blue-light: 215 85% 75%;
+    --campus-yellow: 45 85% 55%;
+    --campus-yellow-light: 45 85% 65%;
+    --campus-gradient: linear-gradient(135deg, hsl(var(--campus-blue)), hsl(var(--campus-blue-light)));
+    --campus-gradient-yellow: linear-gradient(135deg, hsl(var(--campus-yellow)), hsl(var(--campus-yellow-light)));
+    
+    --shadow-soft: 0 4px 20px -4px hsl(var(--campus-blue) / 0.25);
+    --shadow-glow: 0 0 30px hsl(var(--campus-blue) / 0.3);
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer components {
+  .campus-gradient {
+    background: var(--campus-gradient);
+  }
+  
+  .campus-gradient-yellow {
+    background: var(--campus-gradient-yellow);
+  }
+  
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+  
+  .hover-lift {
+    @apply transition-smooth hover:scale-105 hover:shadow-glow;
+  }
+}
