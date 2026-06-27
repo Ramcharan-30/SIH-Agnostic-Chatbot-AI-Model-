@@ -15,7 +15,7 @@ from langchain_community.vectorstores import Chroma
 
 # LLM for question answering
 from openai import OpenAI
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 
 load_dotenv()
 # Check for missing API key

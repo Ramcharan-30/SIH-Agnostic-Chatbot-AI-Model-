@@ -2,28 +2,22 @@ import { Card, CardContent } from "@/components/ui/card";
 
 const teamMembers = [
   {
-    name: "Arjun Patel",
+    name: "Puneeth Manohar",
     role: "AI Developer",
-    year: "3rd Year CS",
+    year: "3rd Year MA",
     avatar: "👨🏽‍💻"
   },
   {
-    name: "Priya Sharma",
+    name: "Ram Charan",
     role: "Frontend Developer",
-    year: "2nd Year IT",
+    year: "3rd Year IT",
     avatar: "👩🏽‍💻"
   },
   {
-    name: "Rahul Kumar",
+    name: "Praneeth",
     role: "Backend Developer", 
     year: "3rd Year CS",
     avatar: "👨🏽‍💻"
-  },
-  {
-    name: "Sneha Singh",
-    role: "UI/UX Designer",
-    year: "2nd Year Design",
-    avatar: "👩🏽‍🎨"
   }
 ];
 
