@@ -1,3 +1,7 @@
+import warnings
+# Suppress LangChain deprecation warnings for Chroma and HuggingFaceEmbeddings
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="langchain")
+
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from typing import List, Dict, Any, Tuple, Optional
@@ -16,14 +20,49 @@ from langchain_community.vectorstores import Chroma
 # LLM for question answering
 from openai import OpenAI
 from langchain_core.prompts import PromptTemplate
+from pathlib import Path
 
 load_dotenv()
-# Check for missing API key
-if not os.getenv("OPENROUTER_API_KEY"):
-    print("Error: OPENROUTER_API_KEY environment variable not set. Please add it to your .env file.")
-    exit(1)
 
-def vector_store_exists(persist_directory="data/chroma_db"): # 
+# ---------------------------------------------------------------------------
+# Module-level singletons (created once, reused across all requests)
+# ---------------------------------------------------------------------------
+
+_embeddings_instance = None
+_openai_client = None
+_intent_recognizer = None
+
+def _get_openai_client():
+    """Return a cached OpenAI client pointing at OpenRouter."""
+    global _openai_client
+    if _openai_client is None:
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "OPENROUTER_API_KEY is not set. "
+                "Add it to your .env file or environment variables."
+            )
+        _openai_client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=api_key,
+        )
+    return _openai_client
+
+
+def _get_intent_recognizer():
+    """Return a cached IntentEntityRecognizer."""
+    global _intent_recognizer
+    if _intent_recognizer is None:
+        _intent_recognizer = IntentEntityRecognizer()
+    return _intent_recognizer
+
+
+# Warn (don't crash) if API key is missing at import time
+if not os.getenv("OPENROUTER_API_KEY"):
+    print("WARNING: OPENROUTER_API_KEY not set. Bot will fail at request time.")
+
+
+def vector_store_exists(persist_directory="data/chroma_db"):
     """
     Check if a valid Chroma vector store exists at the given directory.
     
@@ -79,15 +118,16 @@ def load_documents(folder_path: str) -> List[Document]:
     return documents
 
 def get_multilingual_embeddings():
-    # Using a popular multilingual model
-    model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-    
-    embeddings = HuggingFaceEmbeddings(
-        model_name=model_name,
-        model_kwargs={'device': 'cpu'},  # Use 'cuda' if you have GPU
-        encode_kwargs={'normalize_embeddings': True}
-    )
-    return embeddings
+    """Return a cached HuggingFaceEmbeddings instance (singleton)."""
+    global _embeddings_instance
+    if _embeddings_instance is None:
+        model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+        _embeddings_instance = HuggingFaceEmbeddings(
+            model_name=model_name,
+            model_kwargs={'device': 'cpu'},  # Use 'cuda' if you have GPU
+            encode_kwargs={'normalize_embeddings': True}
+        )
+    return _embeddings_instance
 
 def create_vector_store(documents, persist_directory="data/chroma_db"):
     # Split documents into chunks
@@ -130,20 +170,6 @@ def get_or_create_vector_store(documents, persist_directory="data/chroma_db"):
         print("Vector store created successfully.")
 
     return vector_store
-
-def ask_ai(vector_store, question: str) -> str:
-    """
-    Handles a single chatbot query and returns the answer.
-    Replace this with your LangChain chain/QA setup if needed.
-    """
-    # Example: similarity search
-    results = vector_store.similarity_search(question, k=3)
-    answer = " ".join([doc.page_content for doc in results])
-
-    # TODO: If you already had a LangChain QA/ConversationalRetrievalChain setup,
-    # replace above with chain.run({"question": question}) or similar.
-    
-    return answer
 
 # Intent and Entity Recognition
 class IntentEntityRecognizer:
@@ -411,14 +437,9 @@ class ConversationMemory:
 
 # Create QA chain with memory
 def create_qa_chain(vector_store, memory):
-    # Initialize OpenRouter client
-    client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=os.getenv("OPENROUTER_API_KEY"),
-    )
-    
-    # Initialize intent recognizer
-    intent_recognizer = IntentEntityRecognizer()
+    # Use cached singletons
+    client = _get_openai_client()
+    intent_recognizer = _get_intent_recognizer()
     
     # Create prompt template with conversation history and intent context
     prompt_template = """You are a helpful assistant for students. Use the following pieces of context, conversation history, and detected intent to answer the question at the end in the same language as the question. Maintain a semi-professional tone as we are conversing with students.
@@ -489,7 +510,7 @@ Answer:"""
         # Retrieve relevant documents - adjust k based on intent confidence
         k_value = 5 if intent_info['confidence'] > 0.7 else 3
         retriever = vector_store.as_retriever(search_kwargs={"k": k_value})
-        docs = retriever.get_relevant_documents(query)
+        docs = retriever.invoke(query)
         context = "\n\n".join([doc.page_content for doc in docs])
         
         # Get conversation history
@@ -555,8 +576,6 @@ def interactive_chat(vector_store):
 
 
 # Main function
-from pathlib import Path
-
 def main():
     # Resolve script directory (where fun.py lives)
     script_dir = Path(__file__).resolve().parent

@@ -5,7 +5,7 @@ import fs from "fs";
 
 const BOT_URL = process.env.PYTHON_BOT_URL || "http://localhost:8000"; // e.g. http://localhost:8000
 const BOT_API_KEY = process.env.BOT_API_KEY || ""; // optional server-to-server auth
-const TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT_MS || "20000", 10);
+const TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT_MS || "45000", 10);
 
 // Helper to get headers including optional auth
 function makeHeaders(additional = {}) {

@@ -1,0 +1,26 @@
+# IDEs
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# Project specifics
+uploads/
+chroma_db/
+bot_before_integration/data/chroma_db/
